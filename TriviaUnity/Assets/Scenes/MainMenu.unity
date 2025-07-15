@@ -1421,7 +1421,7 @@ GameObject:
   - component: {fileID: 1045088389}
   - component: {fileID: 1045088388}
   m_Layer: 5
-  m_Name: Game Title (1)
+  m_Name: EnterNameText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1693,12 +1693,12 @@ GameObject:
   - component: {fileID: 1327075781}
   - component: {fileID: 1327075780}
   m_Layer: 5
-  m_Name: Game Title (2)
+  m_Name: ErrorMessage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1327075779
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1747,8 +1747,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190335
+  m_fontColor: {r: 1, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2650,6 +2650,7 @@ GameObject:
   - component: {fileID: 2104466462}
   - component: {fileID: 2104466464}
   - component: {fileID: 2104466463}
+  - component: {fileID: 2104466465}
   m_Layer: 5
   m_Name: UserLoginPanel
   m_TagString: Untagged
@@ -2719,6 +2720,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2104466461}
   m_CullTransparentMesh: 1
+--- !u!114 &2104466465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2104466461}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2075244b39971de4da6c2c4840833fa8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  usernameInput: {fileID: 1540975020}
+  RegistrationPanel: {fileID: 2104466461}
+  NameTakenText: {fileID: 1327075778}
+  WaitingPanel: {fileID: 1644103848}
+  ServerURL: URL
 --- !u!1 &2136987687
 GameObject:
   m_ObjectHideFlags: 0
