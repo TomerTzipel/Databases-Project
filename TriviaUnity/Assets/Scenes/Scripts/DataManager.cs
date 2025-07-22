@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -16,11 +17,34 @@ public class DataManager : MonoBehaviour
 {
     [SerializeField] private GameManager gameManager;
     [SerializeField] private UIManager uiManager;
+
+    [SerializeField] private float serverPollInterval;
+
     private List<Question> _questions;
 
     async void Awake()
     {
         await GetQuestionsList();
+    }
+
+
+
+
+   
+
+    public IEnumerator PollAvailableGame()
+    {
+        while (!IsGameAvailable())
+        {
+            yield return new WaitForSeconds(serverPollInterval);
+        }   
+
+        //Game Was Found
+    }
+
+    private bool IsGameAvailable()
+    {
+        //Check in the database if another player is looking for a game.
     }
 
     private async Task GetQuestionsList()
