@@ -7,6 +7,11 @@ public class GameManager : MonoBehaviour
 
     private Coroutine searchCoroutine = null;
 
+    public void StartGame()
+    {
+
+    }
+
     public void SearchGame()
     {
         searchCoroutine = StartCoroutine(dataManager.PollAvailableGame());

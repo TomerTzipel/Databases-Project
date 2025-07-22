@@ -13,6 +13,13 @@ public class Question
     public int answerIndex;
 }
 
+[System.Serializable]
+public class SearchResult
+{
+    public bool WasFound { get; set; }
+    public string PlayerName { get; set; }
+}
+
 public class DataManager : MonoBehaviour
 {
     [SerializeField] private GameManager gameManager;
@@ -20,31 +27,79 @@ public class DataManager : MonoBehaviour
 
     [SerializeField] private float serverPollInterval;
 
-    private List<Question> _questions;
+    public List<Question> Questions {get; private set;}
 
     async void Awake()
     {
         await GetQuestionsList();
     }
 
-
-
-
-   
-
     public IEnumerator PollAvailableGame()
     {
+        Task<SearchResult> partnerTask = SearchForPartner();
+        yield return new WaitUntil(() => partnerTask.IsCompleted);
+
+        if(partnerTask.Result != null)
+        {
+            bool wasFound = partnerTask.Result.WasFound;
+
+            if (wasFound)
+            {
+                //Set up a game in the DB
+                //And join it
+                gameManager.StartGame();
+                yield break;
+            }
+        }
+
+        Task searchStatusTask = SetSearchStatus(true);
+        yield return new WaitUntil(() => searchStatusTask.IsCompleted);
+
         while (!IsGameAvailable())
         {
             yield return new WaitForSeconds(serverPollInterval);
-        }   
+        }
 
-        //Game Was Found
+        searchStatusTask = SetSearchStatus(false);
+        yield return new WaitUntil(() => searchStatusTask.IsCompleted);
+
+        //Join the game in the DB
+
+        gameManager.StartGame();
     }
 
     private bool IsGameAvailable()
     {
+        return true;
         //Check in the database if another player is looking for a game.
+    }
+
+    private async Task<SearchResult> SearchForPartner()
+    {
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return null;
+        }
+
+        string json = www.downloadHandler.text;
+
+        SearchResult result = JsonUtility.FromJson<SearchResult>(json);
+        return result;
+    }
+    private async Task SetSearchStatus(bool value)
+    {
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return;
+        }
     }
 
     private async Task GetQuestionsList()
@@ -59,8 +114,8 @@ public class DataManager : MonoBehaviour
         }
 
         string json = www.downloadHandler.text;
-        json = json.Remove(0,1);
-        json = json.Remove(json.Length-1,1);
+        json = json[1..];
+        json = json[..^1];
 
         string[] questionsJson = json.Split("}",System.StringSplitOptions.RemoveEmptyEntries);
 
@@ -71,14 +126,14 @@ public class DataManager : MonoBehaviour
             if (questionsJson[i][0] == ',') questionsJson[i] = questionsJson[i].Remove(0, 1);
         }
 
-        _questions = new List<Question>();
+        Questions = new List<Question>();
 
         foreach (string question in questionsJson)
         {
-            _questions.Add(JsonUtility.FromJson<Question>(question));
+            Questions.Add(JsonUtility.FromJson<Question>(question));
         }
         
-        foreach (Question question in _questions) 
+        foreach (Question question in Questions) 
         {
             Debug.Log($"Question {question.questionText}");
             Debug.Log($"Answer1 {question.optionTexts[0]}");

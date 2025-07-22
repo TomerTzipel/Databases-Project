@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -8,7 +9,6 @@ namespace TriviaServer.Controllers
     [ApiController]
     public class TriviaController : ControllerBase
     {
-        // GET: api/<TriviaController>
         [HttpGet("GetQuestions")]
         public async Task<IEnumerable<Question>?> GetQuestions()
         {
@@ -16,25 +16,22 @@ namespace TriviaServer.Controllers
             return QuestionList;
         }
 
-        // GET api/<TriviaController>/5
-        [HttpGet("{id:int}")]
-        public async Task<Question?> Get(int id)
+        [HttpGet("GetQuestion_{id:int}")]
+        public async Task<Question?> GetQuestion(int id)
         {
             Question? question = await DatabaseManager.Instance.GetQuestion(id);
             return question;
         }
 
-        // GET api/<TriviaController>/6
-        [HttpGet("{name}")]
-        public async Task<bool> Get(string name)
+        [HttpGet("DoesPlayerExist_{name}")]
+        public async Task<bool> DoesPlayerExist(string name)
         {
             bool result = await DatabaseManager.Instance.DoesPlayerExist(name);
             return result;
         }
 
-        // POST api/<TriviaController>
-        [HttpPost("{name}")]
-        public async Task Post(string name)
+        [HttpPost("AddPlayer_{name}")]
+        public async Task AddPlayer(string name)
         {
             Player player = new Player();
             player.Name = name;
@@ -42,17 +39,29 @@ namespace TriviaServer.Controllers
             await DatabaseManager.Instance.AddPlayer(player);
         }
 
-        // PUT api/<TriviaController>/5
-        [HttpPut("{name},{value}")]
-        public async Task Put(string name,bool value)
+        [HttpPut("SetSearchingStatus_{name},{value}")]
+        public async Task SetSearchingStatus(string name,bool value)
         {
-            await DatabaseManager.Instance.SetPlayerActive(name,value);
+            await DatabaseManager.Instance.SetPlayerSearching(name,value);
         }
 
-        // DELETE api/<TriviaController>/5
-        [HttpDelete("{id}")]
+        [HttpGet("GetSearchingPlayer")]
+        public async Task<SearchResult?> GetSearchingPlayer()
+        {
+            SearchResult? result = await DatabaseManager.Instance.GetSearchingPlayer();
+            return result;
+        }
+
+        /*[HttpPut("SetPlayingStatus_{name},{value}")]
+        public async Task PutPlayingStatus(string name, bool value)
+        {
+            await DatabaseManager.Instance.SetPlayerPlaying(name, value);
+        }*/
+
+        [HttpDelete("RemovePlayer_{id}")]
         public void Delete(int id)
         {
+
         }
     }
 }

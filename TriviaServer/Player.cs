@@ -7,4 +7,5 @@
         public float TotalTime { get; set; } = 0;
         public bool IsActive { get; set; }
     }
+
 }
