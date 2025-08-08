@@ -1,13 +1,13 @@
 ﻿using Npgsql;
 
 namespace TriviaServer
-{
+{//
     public class DatabaseManager
     {
         private static DatabaseManager? _instance = null;
         private static readonly object _padlock = new object();
         private string _connectionString = "Host=aws-0-eu-central-1.pooler.supabase.com;Database=postgres;Username=postgres.xivoeutxghwfwoncdqzo;Password=#kLsZWP?S5riK6T;Port=5432;SSL Mode=Require;Trust Server Certificate=true";
-       
+
         private DatabaseManager() { }
 
         public static DatabaseManager Instance
@@ -113,7 +113,7 @@ namespace TriviaServer
             }
         }
 
-        public async Task SetPlayerActive(string name,bool value)
+        public async Task SetPlayerActive(string name, bool value)
         {
             try
             {
@@ -144,8 +144,8 @@ namespace TriviaServer
             }
             catch (Exception)
             {
-                
-            }   
+
+            }
         }
 
 
