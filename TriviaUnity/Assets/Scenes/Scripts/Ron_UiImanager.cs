@@ -7,12 +7,28 @@ public class Ron_UIManager : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] private TMP_Text questionText;
-    [SerializeField] private Button[] optionButtons = new Button[4]; 
+    [SerializeField] private Button[] optionButtons = new Button[4];
+    [SerializeField] private CountdownTimer countdownTimer; 
 
-    // Subscribe from your game logic 
-    public event UnityAction<int> AnswerChosen; // passes the chosen option index (0..3)
+    // Fired when the player chooses an answer 
+    public event UnityAction<int> AnswerChosen;
 
-    // ---------- Methods to update UI text ----------
+    [Header("Events")]
+    [SerializeField] private UnityEvent onTimeUp; 
+
+    private void OnEnable()
+    {
+        if (countdownTimer != null)
+            countdownTimer.TimerEnded += HandleTimeUp;
+    }
+
+    private void OnDisable()
+    {
+        if (countdownTimer != null)
+            countdownTimer.TimerEnded -= HandleTimeUp;
+    }
+
+   
     public void SetQuestion(string text)
     {
         if (questionText) questionText.text = text ?? string.Empty;
@@ -24,7 +40,6 @@ public class Ron_UIManager : MonoBehaviour
         {
             if (!optionButtons[i]) continue;
 
-          
             TMP_Text label = optionButtons[i].GetComponentInChildren<TMP_Text>();
             if (label)
             {
@@ -47,9 +62,22 @@ public class Ron_UIManager : MonoBehaviour
         if (label) label.text = text ?? string.Empty;
     }
 
-    
+   
     public void UI_PickOption0() => AnswerChosen?.Invoke(0);
     public void UI_PickOption1() => AnswerChosen?.Invoke(1);
     public void UI_PickOption2() => AnswerChosen?.Invoke(2);
     public void UI_PickOption3() => AnswerChosen?.Invoke(3);
+
+    // ---------- Called when timer hits 0 ----------
+    private void HandleTimeUp()
+    {
+        Debug.Log("UIManager detected that time is up!");
+        onTimeUp?.Invoke(); 
+
+        
+        foreach (Button btn in optionButtons)
+        {
+            if (btn) btn.interactable = false;
+        }
+    }
 }

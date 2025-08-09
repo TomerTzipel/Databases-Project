@@ -23,7 +23,7 @@ public class SearchResult
 public class DataManager : MonoBehaviour
 {
     [SerializeField] private GameManager gameManager;
-    [SerializeField] private UIManager uiManager;
+    [SerializeField] private Ron_UIManager uiManager;
 
     [SerializeField] private float serverPollInterval;
 
