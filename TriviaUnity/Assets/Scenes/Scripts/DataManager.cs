@@ -4,6 +4,18 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
+[System.Serializable]
+public class GameResult
+{
+    public int totalTime;
+    public int score;
+}
+[System.Serializable]
+public class QuestionResult
+{
+    public int time;
+    public bool result;
+}
 
 [System.Serializable]
 public class Question
@@ -16,22 +28,35 @@ public class Question
 [System.Serializable]
 public class SearchResult
 {
-    public bool WasFound { get; set; }
-    public string PlayerName { get; set; }
+    [field:SerializeField] public bool WasFound { get; set; }
+    [field: SerializeField] public string PlayerName { get; set; }
 }
 
 public class DataManager : MonoBehaviour
 {
     [SerializeField] private GameManager gameManager;
-    [SerializeField] private Ron_UIManager uiManager;
-
     [SerializeField] private float serverPollInterval;
-
-    public List<Question> Questions {get; private set;}
 
     async void Awake()
     {
         await GetQuestionsList();
+    }
+
+    public IEnumerator PollGameOver(string opponentName)
+    {
+        while (true) 
+        {
+            Task<bool> gameTask = IsGameOver();
+            yield return new WaitUntil(() => gameTask.IsCompleted);
+
+            if (gameTask.Result)
+            {
+                Task<GameResult> resultTask = GetPlayerResult(opponentName);
+                yield return new WaitUntil(() => resultTask.IsCompleted);
+                gameManager.CompareGameResults(resultTask.Result);
+                break;
+            }
+        }
     }
 
     public IEnumerator PollAvailableGame()
@@ -39,41 +64,72 @@ public class DataManager : MonoBehaviour
         Task<SearchResult> partnerTask = SearchForPartner();
         yield return new WaitUntil(() => partnerTask.IsCompleted);
 
-        if(partnerTask.Result != null)
-        {
-            bool wasFound = partnerTask.Result.WasFound;
+        Task statusTask;
 
-            if (wasFound)
+        if (partnerTask.Result != null)
+        {
+            if (partnerTask.Result.WasFound)
             {
-                //Set up a game in the DB
-                //And join it
+                statusTask = SetInGame(partnerTask.Result.PlayerName,gameManager.Name);
+                yield return new WaitUntil(() => statusTask.IsCompleted);
+
+                statusTask = SetInGame(gameManager.Name, partnerTask.Result.PlayerName);
+                yield return new WaitUntil(() => statusTask.IsCompleted);
+
                 gameManager.StartGame();
                 yield break;
             }
         }
 
-        Task searchStatusTask = SetSearchStatus(true);
-        yield return new WaitUntil(() => searchStatusTask.IsCompleted);
+        statusTask = SetSearchStatus(true, gameManager.Name);
+        yield return new WaitUntil(() => statusTask.IsCompleted);
 
-        while (!IsGameAvailable())
+        while (true)
         {
+            Task<bool> gameTask = IsGameReady();
+            yield return new WaitUntil(() => gameTask.IsCompleted);
+            if (gameTask.Result)
+            {
+
+                break;
+            }
             yield return new WaitForSeconds(serverPollInterval);
+
         }
 
-        searchStatusTask = SetSearchStatus(false);
-        yield return new WaitUntil(() => searchStatusTask.IsCompleted);
-
-        //Join the game in the DB
-
-        gameManager.StartGame();
+        gameManager.StartGame();  
     }
-
-    private bool IsGameAvailable()
+    public async Task<bool> DoesPlayerExist(string name)
     {
-        return true;
-        //Check in the database if another player is looking for a game.
+        //Wrong URL
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return false;
+        }
+
+        string json = www.downloadHandler.text;
+
+        bool result = JsonUtility.FromJson<bool>(json);
+        return result;
+    }
+    public async Task AddPlayer(string name)
+    {
+        //Wrong url
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return;
+        }
     }
 
+    //Returns true and the name of the players that was found with isSearching = true
     private async Task<SearchResult> SearchForPartner()
     {
         UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
@@ -90,8 +146,107 @@ public class DataManager : MonoBehaviour
         SearchResult result = JsonUtility.FromJson<SearchResult>(json);
         return result;
     }
-    private async Task SetSearchStatus(bool value)
+
+    //DB Effect - Returns true if isPlaying = true on the user's data
+    private async Task<bool> IsGameReady()
     {
+        //Wrong URL
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return false;
+        }
+
+        string json = www.downloadHandler.text;
+
+        bool result = JsonUtility.FromJson<bool>(json);
+        return result;
+    }
+
+    //DB Effect - Returns true if the oppName has isPlaying = false
+    private async Task<bool> IsGameOver()
+    {
+        //Wrong URL
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return false;
+        }
+
+        string json = www.downloadHandler.text;
+
+        bool result = JsonUtility.FromJson<bool>(json);
+        return result;
+    }
+
+    //DB Effect - Returns the game result of the given player name
+    public async Task<GameResult> GetPlayerResult(string name)
+    {
+        //Wrong url
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return null;
+        }
+
+        string json = www.downloadHandler.text;
+
+        GameResult result = JsonUtility.FromJson<GameResult>(json);
+        return result;
+    }
+    //DB Effect - Returns the game result of the given player name
+    public async Task SetPlayerResult(string name,GameResult result)
+    {
+        //Wrong url
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return;
+        }
+    }
+    //DB Effect - sets isSearching = value
+    public async Task SetSearchStatus(bool value,string name)
+    {
+        //Wrong url
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return;
+        }
+    }
+    public async Task SetPlayingStatus(bool value, string name)
+    {
+        //Wrong url
+        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return;
+        }
+    }
+
+    //DB Effect - sets isSearching = false, isPlaying = true , oppName = oppName
+    //Only to the user whose name = myName
+    private async Task SetInGame(string myName,string oppName)
+    {
+        //Wrong url
         UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
         await www.SendWebRequest();
 
@@ -126,14 +281,14 @@ public class DataManager : MonoBehaviour
             if (questionsJson[i][0] == ',') questionsJson[i] = questionsJson[i].Remove(0, 1);
         }
 
-        Questions = new List<Question>();
+        gameManager.Questions = new List<Question>();
 
         foreach (string question in questionsJson)
         {
-            Questions.Add(JsonUtility.FromJson<Question>(question));
+            gameManager.Questions.Add(JsonUtility.FromJson<Question>(question));
         }
         
-        foreach (Question question in Questions) 
+        foreach (Question question in gameManager.Questions) 
         {
             Debug.Log($"Question {question.questionText}");
             Debug.Log($"Answer1 {question.optionTexts[0]}");
