@@ -11,11 +11,26 @@ namespace TriviaServer.Controllers
         [HttpPost("GameOver")]
         public async Task<IActionResult> GameOver([FromBody] GameOverDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.PlayerId))
-                return BadRequest(new { error = "playerId required" });
+            if (dto is null) return BadRequest(new { error = "body_required" });
+            if (string.IsNullOrWhiteSpace(dto.PlayerName))
+                return BadRequest(new { error = "playerName_required" });
+            if (string.IsNullOrWhiteSpace(dto.Result))
+                return BadRequest(new { error = "result_required" });
 
-            await FirestoreAnalytics.Instance.LogGameOver(dto);
-            return Ok(new { ok = true, matchId = string.IsNullOrWhiteSpace(dto.MatchId) ? "generated" : dto.MatchId });
+            var r = dto.Result.Trim().ToLowerInvariant();
+            if (r != "win" && r != "loss" && r != "tie")
+                return BadRequest(new { error = "result_invalid", allowed = new[] { "win", "loss", "tie" } });
+
+            try
+            {
+                var normalized = await FirestoreAnalytics.Instance.UpdatePlayerStats(dto);
+                // Echo back the normalized result string
+                return Ok(new { ok = true, result = normalized });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "analytics_failed", detail = ex.Message });
+            }
         }
     }
 }

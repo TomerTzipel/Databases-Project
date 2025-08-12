@@ -1,12 +1,17 @@
 ﻿using Npgsql;
+using System.Security.Cryptography;
 
 namespace TriviaServer
-{//
+{
     public class DatabaseManager
     {
         private static DatabaseManager? _instance = null;
         private static readonly object _padlock = new object();
-        private string _connectionString = "Host=aws-0-eu-central-1.pooler.supabase.com;Database=postgres;Username=postgres.xivoeutxghwfwoncdqzo;Password=#kLsZWP?S5riK6T;Port=5432;SSL Mode=Require;Trust Server Certificate=true";
+
+        // TODO: Move to appsettings.json and read via IConfiguration
+        // Replace the placeholders below with real values:
+        private string _connectionString =
+            "Host=YOUR_HOST;Port=5432;Username=YOUR_USER;Password=YOUR_PASSWORD;Database=YOUR_DB;SSL Mode=Require;Trust Server Certificate=true";
 
         private DatabaseManager() { }
 
@@ -16,42 +21,8 @@ namespace TriviaServer
             {
                 lock (_padlock)
                 {
-                    if (_instance == null)
-                    {
-                        _instance = new DatabaseManager();
-                    }
-                    return _instance;
+                    return _instance ??= new DatabaseManager();
                 }
-
-            }
-        }
-
-        public async Task<Question?> GetQuestion(int id)
-        {
-            try
-            {
-                Question question = new Question();
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                string query = "SELECT * FROM \"public\".\"Questions\" WHERE id = " + id;
-                using var command = new NpgsqlCommand(query, connection);
-                using var reader = await command.ExecuteReaderAsync();
-
-                if (reader.Read())
-                {
-                    question.QuestionText = reader.GetString(reader.GetOrdinal("question"));
-                    question.OptionTexts[0] = reader.GetString(reader.GetOrdinal("answer1"));
-                    question.OptionTexts[1] = reader.GetString(reader.GetOrdinal("answer2"));
-                    question.OptionTexts[2] = reader.GetString(reader.GetOrdinal("answer3"));
-                    question.OptionTexts[3] = reader.GetString(reader.GetOrdinal("answer4"));
-                    question.AnswerIndex = reader.GetInt16(reader.GetOrdinal("correctAnswer")) - 1;
-                }
-                return question;
-            }
-            catch (Exception)
-            {
-                return null;
             }
         }
 
@@ -59,55 +30,66 @@ namespace TriviaServer
         {
             try
             {
-                List<Question> questionList = new List<Question>();
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var list = new List<Question>();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                string query = "SELECT * FROM \"public\".\"Questions\"";
-                using var command = new NpgsqlCommand(query, connection);
-                using var reader = await command.ExecuteReaderAsync();
+                const string sql = @"SELECT question, option0, option1, option2, option3, answerindex
+                                     FROM public.""Questions""";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
 
-                while (reader.Read())
+                while (await reader.ReadAsync())
                 {
-                    Question question = new Question();
-                    question.QuestionText = reader.GetString(reader.GetOrdinal("question"));
-                    question.OptionTexts[0] = reader.GetString(reader.GetOrdinal("answer1"));
-                    question.OptionTexts[1] = reader.GetString(reader.GetOrdinal("answer2"));
-                    question.OptionTexts[2] = reader.GetString(reader.GetOrdinal("answer3"));
-                    question.OptionTexts[3] = reader.GetString(reader.GetOrdinal("answer4"));
-                    question.AnswerIndex = reader.GetInt16(reader.GetOrdinal("correctAnswer")) - 1;
-                    questionList.Add(question);
+                    var q = new Question
+                    {
+                        QuestionText = reader.GetString(reader.GetOrdinal("question")),
+                        OptionTexts = new[]
+                        {
+                            reader.GetString(reader.GetOrdinal("option0")),
+                            reader.GetString(reader.GetOrdinal("option1")),
+                            reader.GetString(reader.GetOrdinal("option2")),
+                            reader.GetString(reader.GetOrdinal("option3")),
+                        },
+                        AnswerIndex = reader.GetInt32(reader.GetOrdinal("answerindex"))
+                    };
+                    list.Add(q);
                 }
-                return questionList;
+
+                return list;
             }
-            catch (Exception)
+            catch
             {
                 return null;
             }
+        }
+
+        public async Task<Question?> GetQuestion()
+        {
+            var list = await GetQuestions();
+            if (list == null || list.Count == 0) return null;
+
+            var idx = RandomNumberGenerator.GetInt32(list.Count);
+            return list[idx];
         }
 
         public async Task<bool> DoesPlayerExist(string name)
         {
             try
             {
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                string query = $"SELECT COUNT(*) FROM \"public\".\"Players\" WHERE name = \'{name}\'";
-                using var command = new NpgsqlCommand(query, connection);
-                Object? result = await command.ExecuteScalarAsync();
+                const string sql = @"SELECT 1 FROM public.""Players""
+                                     WHERE name = @name
+                                     LIMIT 1;";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@name", name ?? string.Empty);
 
-                Int32 count = 0;
-                if (result != null)
-                {
-                    count = Convert.ToInt32(result);
-
-                }
-
-                return count > 0;
-
+                var result = await cmd.ExecuteScalarAsync();
+                return result != null;
             }
-            catch (Exception)
+            catch
             {
                 return false;
             }
@@ -117,15 +99,21 @@ namespace TriviaServer
         {
             try
             {
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                string query = $"UPDATE \"public\".\"Players\" SET \"isActive\"= {value} WHERE name = \'{name}\'";
-                using var command = new NpgsqlCommand(query, connection);
-                await command.ExecuteNonQueryAsync();
+                const string sql = @"UPDATE public.""Players""
+                                     SET ""isActive"" = @active
+                                     WHERE name = @name;";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@active", value);
+                cmd.Parameters.AddWithValue("@name", name ?? string.Empty);
+
+                await cmd.ExecuteNonQueryAsync();
             }
-            catch (Exception)
+            catch
             {
+                // optionally log
             }
         }
 
@@ -133,32 +121,24 @@ namespace TriviaServer
         {
             try
             {
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
 
-                string query = "INSERT INTO \"public\".\"Players\" (\"name\",\"score\",\"totalTime\",\"isActive\") " +
-                    $"VALUES ('{player.Name}',{player.Score},{player.TotalTime},{player.IsActive})";
+                const string sql = @"INSERT INTO public.""Players""
+                                     (""name"",""score"",""totalTime"",""isActive"")
+                                     VALUES (@name,@score,@totalTime,@isActive);";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@name", player.Name ?? string.Empty);
+                cmd.Parameters.AddWithValue("@score", player.Score);
+                cmd.Parameters.AddWithValue("@totalTime", player.TotalTime);
+                cmd.Parameters.AddWithValue("@isActive", player.IsActive);
 
-                using var command = new NpgsqlCommand(query, connection);
-                await command.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync();
             }
-            catch (Exception)
+            catch
             {
-
+                // optionally log
             }
         }
-
-
-
-        /*public async Task UpdatePlayer(Player player,int id)
-        {
-            using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            // Query Players table
-            string query = $"UPDATE \"public\".\"Players\" " +
-                           $"SET name = {player.Name}, " +
-                           $"WHERE id = {id}";
-        }*/
     }
 }

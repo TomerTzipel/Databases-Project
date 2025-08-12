@@ -1,58 +1,55 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace TriviaServer.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class TriviaController : ControllerBase
     {
-        // GET: api/<TriviaController>
-        [HttpGet("GetQuestions")]
-        public async Task<IEnumerable<Question>?> GetQuestions()
+        [HttpGet("question")]
+        public async Task<IActionResult> GetQuestion()
         {
-            List<Question>? QuestionList = await DatabaseManager.Instance.GetQuestions();
-            return QuestionList;
+            var q = await DatabaseManager.Instance.GetQuestion();
+            if (q is null) return NotFound(new { error = "no_questions" });
+            return Ok(q);
         }
 
-        // GET api/<TriviaController>/5
-        [HttpGet("{id:int}")]
-        public async Task<Question?> Get(int id)
+        [HttpGet("questions")]
+        public async Task<IActionResult> GetQuestions()
         {
-            Question? question = await DatabaseManager.Instance.GetQuestion(id);
-            return question;
+            var list = await DatabaseManager.Instance.GetQuestions();
+            if (list is null || list.Count == 0) return NotFound(new { error = "no_questions" });
+            return Ok(list);
         }
 
-        // GET api/<TriviaController>/6
-        [HttpGet("{name}")]
-        public async Task<bool> Get(string name)
+        [HttpGet("players/exists")]
+        public async Task<IActionResult> PlayerExists([FromQuery] string name)
         {
-            bool result = await DatabaseManager.Instance.DoesPlayerExist(name);
-            return result;
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { error = "name_required" });
+
+            var exists = await DatabaseManager.Instance.DoesPlayerExist(name);
+            return Ok(new { exists });
         }
 
-        // POST api/<TriviaController>
-        [HttpPost("{name}")]
-        public async Task Post(string name)
+        [HttpPost("players")]
+        public async Task<IActionResult> AddPlayer([FromBody] Player player)
         {
-            Player player = new Player();
-            player.Name = name;
-            player.IsActive = false;
+            if (player is null || string.IsNullOrWhiteSpace(player.Name))
+                return BadRequest(new { error = "name_required" });
+
             await DatabaseManager.Instance.AddPlayer(player);
+            return Ok(new { ok = true });
         }
 
-        // PUT api/<TriviaController>/5
-        [HttpPut("{name},{value}")]
-        public async Task Put(string name,bool value)
+        [HttpPost("players/active")]
+        public async Task<IActionResult> SetActive([FromQuery] string name, [FromQuery] bool active)
         {
-            await DatabaseManager.Instance.SetPlayerActive(name,value);
-        }
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { error = "name_required" });
 
-        // DELETE api/<TriviaController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            await DatabaseManager.Instance.SetPlayerActive(name, active);
+            return Ok(new { ok = true });
         }
     }
 }
