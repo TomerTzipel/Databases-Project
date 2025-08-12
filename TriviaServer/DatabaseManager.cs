@@ -117,8 +117,34 @@ namespace TriviaServer
                 return false;
             }
         }
+        public async Task<string?> GetOpponent(string name)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-        public async Task<SearchResult?> GetSearchingPlayer()
+                string query = $"SELECT \"oppName\" FROM \"public\".\"Players\" " +
+                               $"WHERE name = \'{name}\'";
+                using var command = new NpgsqlCommand(query, connection);
+                using var reader = await command.ExecuteReaderAsync();
+
+
+                if (!reader.HasRows)
+                {
+                    return null;
+                }
+
+                reader.Read();
+                return reader.GetString(0);
+
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+        public async Task<SearchResult?> GetSearchingPlayer(string searchingName)
         {
             try
             {
@@ -126,7 +152,7 @@ namespace TriviaServer
                 await connection.OpenAsync();
 
                 string query = $"SELECT name FROM \"public\".\"Players\" " +
-                               $"WHERE \"isSearching\" = true";
+                               $"WHERE \"isSearching\" = true AND NOT name = \'{searchingName}\'";
                 using var command = new NpgsqlCommand(query, connection);
                 using var reader = await command.ExecuteReaderAsync();
 
@@ -177,7 +203,7 @@ namespace TriviaServer
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = $"SELECT isPlaying FROM \"public\".\"Players\" " +
+                string query = $"SELECT \"isPlaying\" FROM \"public\".\"Players\" " +
                                $"WHERE name = \'{name}\'";
                 using var command = new NpgsqlCommand(query, connection);
                 using var reader = await command.ExecuteReaderAsync();
@@ -218,9 +244,9 @@ namespace TriviaServer
                 await connection.OpenAsync();
 
                 string query = $"UPDATE \"public\".\"Players\" " +
-                               $"SET \"oppName\"= {oppName}, " +
-                               $"\"isSearching\"= {false}, " +
-                               $"\"isPlaying\"= {true} " +
+                               $"SET \"oppName\"= \'{oppName}\', " +
+                               $"\"isSearching\"= false, " +
+                               $"\"isPlaying\"= true " +
                                $"WHERE name = \'{originName}\'";
                 using var command = new NpgsqlCommand(query, connection);
                 await command.ExecuteNonQueryAsync();
@@ -235,7 +261,7 @@ namespace TriviaServer
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = $"SELECT score,totalTime FROM \"public\".\"Players\" " +
+                string query = $"SELECT \"score\",\"totalTime\" FROM \"public\".\"Players\" " +
                                $"WHERE name = \'{name}\'";
                 using var command = new NpgsqlCommand(query, connection);
                 using var reader = await command.ExecuteReaderAsync();
@@ -253,6 +279,7 @@ namespace TriviaServer
                 return null;
             }
         }
+
         public async Task SetPlayerGameResult(string name, GameResult result)
         {
             try
@@ -286,18 +313,5 @@ namespace TriviaServer
             catch (Exception)
             { }   
         }
-
-
-
-        /*public async Task UpdatePlayer(Player player,int id)
-        {
-            using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            // Query Players table
-            string query = $"UPDATE \"public\".\"Players\" " +
-                           $"SET name = {player.Name}, " +
-                           $"WHERE id = {id}";
-        }*/
     }
 }

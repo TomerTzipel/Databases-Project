@@ -22,6 +22,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TMP_Text[] optionButtonsText = new TMP_Text[4];
     [SerializeField] private float answerRevealDuration;
 
+    private Color _buttonsOriginalColor;
+
     [Header("Result Panel")]
     [SerializeField] private GameObject resultPanel;
     [SerializeField] private TMP_Text resultTextTitle;
@@ -29,6 +31,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject waitPanel;
     [SerializeField] private TMP_Text waitTextTitle;
     [SerializeField] private GameObject cancelSearchButton;
+
+    private void Awake()
+    {
+        _buttonsOriginalColor = optionButtonsImage[0].color;
+    }
     public void LoadQuestionAndOptions(Question question)
     {
         questionTextTitle.text = question.questionText;
@@ -53,6 +60,10 @@ public class UIManager : MonoBehaviour
     public IEnumerator AnswerRevealDuration(float duration)
     {
         yield return new WaitForSeconds(duration);
+        foreach (Image image in optionButtonsImage)
+        {
+            image.color = _buttonsOriginalColor;
+        }
         gameManager.NextQuestion();
     }
     public void ShowWaitingPanel(WaitType waitType)

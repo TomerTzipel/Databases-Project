@@ -25,10 +25,10 @@ public class GameManager : MonoBehaviour
 
     public string Name { get; set; } 
 
-    private GameResult _currentGameResult;
+    private GameResult _currentGameResult = new GameResult();
 
     private int _currentQuestion;
-    private string _opponentName;
+    public string OpponentName { get; set; }
 
     private Coroutine searchCoroutine = null;
 
@@ -36,7 +36,11 @@ public class GameManager : MonoBehaviour
     {
         uiManager.ShowMainMenuPanel();
 
-        if(!PlayerPrefs.HasKey("Name")) uiManager.ActivateInsertNamePanel(true);
+        if (!PlayerPrefs.HasKey("Name")) 
+            uiManager.ActivateInsertNamePanel(true);
+        else 
+            Name = PlayerPrefs.GetString("Name");
+
     }
     public async void IsNameAlreadyUsed()
     {
@@ -50,16 +54,18 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        Name = PlayerPrefs.GetString("Name");
         SavePlayerName(playerName);
     }
 
     private async void SavePlayerName(string name)
     {
         uiManager.ActivateNameAlreadyUsedWarning(false);
+        
+        Task playerTask = dataManager.AddPlayer(name);
+        await playerTask;
+
         Name = name;
         PlayerPrefs.SetString("Name", name);
-        await dataManager.AddPlayer(name);
         uiManager.ActivateInsertNamePanel(false);
     }
 
@@ -93,6 +99,11 @@ public class GameManager : MonoBehaviour
     {
         uiManager.ShowTriviaPanel();
         Results = new QuestionResult[Questions.Count];
+
+        for (int i = 0; i < Results.Length; i++)
+        {
+            Results[i] = new QuestionResult();
+        }
         _currentQuestion = -1;
         NextQuestion();
     }
@@ -163,6 +174,7 @@ public class GameManager : MonoBehaviour
         
         await dataManager.SetPlayerResult(Name, _currentGameResult);
         await dataManager.SetPlayingStatus(false, Name);
-        StartCoroutine(dataManager.PollGameOver(_opponentName));
+        uiManager.ShowWaitingPanel(WaitType.OpponentFinish);
+        StartCoroutine(dataManager.PollGameOver(OpponentName));
     }
 }
