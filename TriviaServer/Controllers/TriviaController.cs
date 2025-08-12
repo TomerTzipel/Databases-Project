@@ -1,91 +1,55 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Npgsql;
-using System.Diagnostics;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace TriviaServer.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class TriviaController : ControllerBase
     {
-        [HttpGet("GetQuestions")]
-        public async Task<IEnumerable<Question>?> GetQuestions()
+        [HttpGet("question")]
+        public async Task<IActionResult> GetQuestion()
         {
-            List<Question>? QuestionList = await DatabaseManager.Instance.GetQuestions();
-            return QuestionList;
+            var q = await DatabaseManager.Instance.GetQuestion();
+            if (q is null) return NotFound(new { error = "no_questions" });
+            return Ok(q);
         }
 
-        [HttpGet("GetQuestion_{id:int}")]
-        public async Task<Question?> GetQuestion(int id)
+        [HttpGet("questions")]
+        public async Task<IActionResult> GetQuestions()
         {
-            Question? question = await DatabaseManager.Instance.GetQuestion(id);
-            return question;
+            var list = await DatabaseManager.Instance.GetQuestions();
+            if (list is null || list.Count == 0) return NotFound(new { error = "no_questions" });
+            return Ok(list);
         }
 
-        [HttpGet("DoesPlayerExist_{name}")]
-        public async Task<bool> DoesPlayerExist(string name)
+        [HttpGet("players/exists")]
+        public async Task<IActionResult> PlayerExists([FromQuery] string name)
         {
-            bool result = await DatabaseManager.Instance.DoesPlayerExist(name);
-            return result;
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { error = "name_required" });
+
+            var exists = await DatabaseManager.Instance.DoesPlayerExist(name);
+            return Ok(new { exists });
         }
 
-        [HttpPut("AddPlayer_{name}")]
-        public async Task AddPlayer(string name)
+        [HttpPost("players")]
+        public async Task<IActionResult> AddPlayer([FromBody] Player player)
         {
-            await DatabaseManager.Instance.AddPlayer(name);
+            if (player is null || string.IsNullOrWhiteSpace(player.Name))
+                return BadRequest(new { error = "name_required" });
+
+            await DatabaseManager.Instance.AddPlayer(player);
+            return Ok(new { ok = true });
         }
 
-        [HttpGet("GetPlayingStatus_{name}")]
-        public async Task<bool> GetPlayingStatus(string name)
+        [HttpPost("players/active")]
+        public async Task<IActionResult> SetActive([FromQuery] string name, [FromQuery] bool active)
         {
-            bool result = await DatabaseManager.Instance.GetIsPlayerPlaying(name);
-            return result;
-        }
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { error = "name_required" });
 
-        [HttpPut("SetPlayingStatus_{name},{value}")]
-        public async Task PutPlayingStatus(string name, bool value)
-        {
-            await DatabaseManager.Instance.SetPlayerPlaying(name, value);
-        }
-
-        [HttpGet("GetSearchingPlayer_{searchingName}")]
-        public async Task<SearchResult?> GetSearchingPlayer(string searchingName)
-        {
-            SearchResult? result = await DatabaseManager.Instance.GetSearchingPlayer(searchingName);
-            return result;
-        }
-        [HttpGet("GetOpponent_{name}")]
-        public async Task<string?> GetOpponent(string name)
-        {
-            string? result = await DatabaseManager.Instance.GetOpponent(name);
-            return result;
-        }
-
-        [HttpPut("SetSearchingStatus_{name},{value}")]
-        public async Task SetSearchingStatus(string name, bool value)
-        {
-            await DatabaseManager.Instance.SetPlayerSearching(name, value);
-        }
-
-        [HttpPut("SetPlayerInGame_{name},{oppName}")]
-        public async Task PutPlayerInGame_(string name, string oppName)
-        {
-            await DatabaseManager.Instance.SetPlayerInGame(name, oppName);
-        }
-
-        [HttpGet("GetPlayerGameResult_{name}")]
-        public async Task<GameResult?> GetPlayerGameResult(string name)
-        {
-            GameResult? result = await DatabaseManager.Instance.GetPlayerGameResult(name);
-            return result;
-        }
-
-        [HttpPut("SetPlayerGameResult_{name},{score},{totalTime}")]
-        public async Task PutPlayerGameResult(string name, int score, int totalTime)
-        {
-            await DatabaseManager.Instance.SetPlayerGameResult(name, new GameResult { Score = score,TotalTime = totalTime });
+            await DatabaseManager.Instance.SetPlayerActive(name, active);
+            return Ok(new { ok = true });
         }
     }
 }
