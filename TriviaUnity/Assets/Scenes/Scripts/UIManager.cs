@@ -1,9 +1,8 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
-using static UnityEngine.LightTransport.IProbeIntegrator;
+
 
 public class UIManager : MonoBehaviour
 {
@@ -13,7 +12,7 @@ public class UIManager : MonoBehaviour
     [Header("Main Menu Panel")]
     [SerializeField] private GameObject mainMenuPanel;
     [SerializeField] private GameObject insertNamePanel;
-    [SerializeField] public InputField nameInputField { get; private set; }
+    [field:SerializeField] public TMP_InputField nameInputField { get; private set; }
     [SerializeField] private GameObject nameAlreadyUsedMessege;
 
     [Header("Trivia Panel")]
@@ -29,7 +28,7 @@ public class UIManager : MonoBehaviour
     [Header("Waiting Panel")]
     [SerializeField] private GameObject waitPanel;
     [SerializeField] private TMP_Text waitTextTitle;
-
+    [SerializeField] private GameObject cancelSearchButton;
     public void LoadQuestionAndOptions(Question question)
     {
         questionTextTitle.text = question.questionText;
@@ -66,9 +65,11 @@ public class UIManager : MonoBehaviour
         {
             case WaitType.OpponentFinish:
                 waitText = "Waiting for opponent to finish...";
+                cancelSearchButton.SetActive(false);
                 break;
             case WaitType.SearchingPlayer:
                 waitText = "Searching for an opponent...";
+                cancelSearchButton.SetActive(true);
                 break;
         }
 

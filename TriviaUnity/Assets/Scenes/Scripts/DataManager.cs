@@ -46,10 +46,10 @@ public class DataManager : MonoBehaviour
     {
         while (true) 
         {
-            Task<bool> gameTask = IsGameOver();
+            Task<bool> gameTask = IsPlayerPlaying(opponentName);
             yield return new WaitUntil(() => gameTask.IsCompleted);
 
-            if (gameTask.Result)
+            if (!gameTask.Result)
             {
                 Task<GameResult> resultTask = GetPlayerResult(opponentName);
                 yield return new WaitUntil(() => resultTask.IsCompleted);
@@ -86,15 +86,11 @@ public class DataManager : MonoBehaviour
 
         while (true)
         {
-            Task<bool> gameTask = IsGameReady();
+            Task<bool> gameTask = IsPlayerPlaying(gameManager.Name);
             yield return new WaitUntil(() => gameTask.IsCompleted);
             if (gameTask.Result)
-            {
-
                 break;
-            }
             yield return new WaitForSeconds(serverPollInterval);
-
         }
 
         gameManager.StartGame();  
@@ -147,27 +143,8 @@ public class DataManager : MonoBehaviour
         return result;
     }
 
-    //DB Effect - Returns true if isPlaying = true on the user's data
-    private async Task<bool> IsGameReady()
-    {
-        //Wrong URL
-        UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
-        await www.SendWebRequest();
-
-        if (www.result == UnityWebRequest.Result.ConnectionError)
-        {
-            Debug.Log(www.error);
-            return false;
-        }
-
-        string json = www.downloadHandler.text;
-
-        bool result = JsonUtility.FromJson<bool>(json);
-        return result;
-    }
-
-    //DB Effect - Returns true if the oppName has isPlaying = false
-    private async Task<bool> IsGameOver()
+    //DB Effect - Returns isPlaying of the given name
+    private async Task<bool> IsPlayerPlaying(string name)
     {
         //Wrong URL
         UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");
@@ -244,7 +221,7 @@ public class DataManager : MonoBehaviour
 
     //DB Effect - sets isSearching = false, isPlaying = true , oppName = oppName
     //Only to the user whose name = myName
-    private async Task SetInGame(string myName,string oppName)
+    private async Task SetInGame(string myName,string oppName)//OK
     {
         //Wrong url
         UnityWebRequest www = UnityWebRequest.Get("https://localhost:7170/api/Trivia/GetSearchingPlayer");

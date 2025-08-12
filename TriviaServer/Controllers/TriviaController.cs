@@ -33,16 +33,19 @@ namespace TriviaServer.Controllers
         [HttpPost("AddPlayer_{name}")]
         public async Task AddPlayer(string name)
         {
-            Player player = new Player();
-            player.Name = name;
-            player.IsActive = false;
-            await DatabaseManager.Instance.AddPlayer(player);
+            await DatabaseManager.Instance.AddPlayer(name);
         }
 
         [HttpPut("SetSearchingStatus_{name},{value}")]
         public async Task SetSearchingStatus(string name,bool value)
         {
             await DatabaseManager.Instance.SetPlayerSearching(name,value);
+        }
+
+        [HttpPut("SetPlayingStatus_{name},{value}")]
+        public async Task PutPlayingStatus(string name, bool value)
+        {
+            await DatabaseManager.Instance.SetPlayerPlaying(name, value);
         }
 
         [HttpGet("GetSearchingPlayer")]
@@ -52,16 +55,5 @@ namespace TriviaServer.Controllers
             return result;
         }
 
-        /*[HttpPut("SetPlayingStatus_{name},{value}")]
-        public async Task PutPlayingStatus(string name, bool value)
-        {
-            await DatabaseManager.Instance.SetPlayerPlaying(name, value);
-        }*/
-
-        [HttpDelete("RemovePlayer_{id}")]
-        public void Delete(int id)
-        {
-
-        }
     }
 }

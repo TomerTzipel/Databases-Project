@@ -37,7 +37,8 @@ namespace TriviaServer
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = "SELECT * FROM \"public\".\"Questions\" WHERE id = " + id;
+                string query = "SELECT * FROM \"public\".\"Questions\" " +
+                               "WHERE id = " + id;
                 using var command = new NpgsqlCommand(query, connection);
                 using var reader = await command.ExecuteReaderAsync();
 
@@ -96,7 +97,8 @@ namespace TriviaServer
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = $"SELECT COUNT(*) FROM \"public\".\"Players\" WHERE name = \'{name}\'";
+                string query = $"SELECT COUNT(*) FROM \"public\".\"Players\" " +
+                               $"WHERE name = \'{name}\'";
                 using var command = new NpgsqlCommand(query, connection);
                 Object? result = await command.ExecuteScalarAsync();
 
@@ -123,7 +125,8 @@ namespace TriviaServer
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = $"SELECT name FROM \"public\".\"Players\" WHERE \"isSearching\" = true";
+                string query = $"SELECT name FROM \"public\".\"Players\" " +
+                               $"WHERE \"isSearching\" = true";
                 using var command = new NpgsqlCommand(query, connection);
                 using var reader = await command.ExecuteReaderAsync();
 
@@ -157,7 +160,9 @@ namespace TriviaServer
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = $"UPDATE \"public\".\"Players\" SET \"isSearching\"= {value} WHERE name = \'{name}\'";
+                string query = $"UPDATE \"public\".\"Players\" " +
+                               $"SET \"isSearching\"= {value} " +
+                               $"WHERE name = \'{name}\'";
                 using var command = new NpgsqlCommand(query, connection);
                 await command.ExecuteNonQueryAsync();
             }
@@ -165,40 +170,121 @@ namespace TriviaServer
             {
             }
         }
-
-       /* public async Task SetPlayerPlaying(string name, bool value)
+        public async Task<bool> GetIsPlayerPlaying(string name)
         {
             try
             {
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = $"UPDATE \"public\".\"Players\" SET \"isPlaying\"= {value} WHERE name = \'{name}\'";
+                string query = $"SELECT isPlaying FROM \"public\".\"Players\" " +
+                               $"WHERE name = \'{name}\'";
                 using var command = new NpgsqlCommand(query, connection);
-                await command.ExecuteNonQueryAsync();
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (!reader.HasRows) return false;
+
+                reader.Read();
+                return reader.GetBoolean(0);
             }
             catch (Exception)
-            {
+            { 
+                return false; 
             }
-        }*/
+        }
 
-        public async Task AddPlayer(Player player)
+        public async Task SetPlayerPlaying(string name, bool value)
         {
             try
             {
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                string query = "INSERT INTO \"public\".\"Players\" (\"name\",\"score\",\"totalTime\",\"isActive\") " +
-                    $"VALUES ('{player.Name}',{player.Score},{player.TotalTime},{player.IsActive})";
+                string query = $"UPDATE \"public\".\"Players\" " +
+                               $"SET \"isPlaying\"= {value} " +
+                               $"WHERE name = \'{name}\'";
+                using var command = new NpgsqlCommand(query, connection);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception)
+            { }
+        }
+
+        public async Task SetPlayerInGame(string originName,string oppName)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                string query = $"UPDATE \"public\".\"Players\" " +
+                               $"SET \"oppName\"= {oppName}, " +
+                               $"\"isSearching\"= {false}, " +
+                               $"\"isPlaying\"= {true} " +
+                               $"WHERE name = \'{originName}\'";
+                using var command = new NpgsqlCommand(query, connection);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception)
+            { }
+        }
+        public async Task<GameResult?> GetPlayerGameResult(string name)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                string query = $"SELECT score,totalTime FROM \"public\".\"Players\" " +
+                               $"WHERE name = \'{name}\'";
+                using var command = new NpgsqlCommand(query, connection);
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (!reader.HasRows) return null;
+
+                reader.Read();
+                GameResult result = new GameResult();
+                result.Score = reader.GetInt32(reader.GetOrdinal("score"));
+                result.TotalTime = reader.GetInt32(reader.GetOrdinal("totalTime"));
+                return result;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+        public async Task SetPlayerGameResult(string name, GameResult result)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                string query = $"UPDATE \"public\".\"Players\" " +
+                               $"SET \"score\"= {result.Score}, " +
+                               $"\"totalTime\"= {result.TotalTime} " +
+                               $"WHERE name = \'{name}\'";
+                using var command = new NpgsqlCommand(query, connection);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception)
+            { }
+        }
+
+        public async Task AddPlayer(string name)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                string query = "INSERT INTO \"public\".\"Players\" (\"name\") " + $"VALUES ('{name}')";
 
                 using var command = new NpgsqlCommand(query, connection);
                 await command.ExecuteNonQueryAsync();
             }
             catch (Exception)
-            {
-                
-            }   
+            { }   
         }
 
 

@@ -54,7 +54,7 @@ public class GameManager : MonoBehaviour
         SavePlayerName(playerName);
     }
 
-    public async void SavePlayerName(string name)
+    private async void SavePlayerName(string name)
     {
         uiManager.ActivateNameAlreadyUsedWarning(false);
         Name = name;
