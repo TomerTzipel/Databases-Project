@@ -32,14 +32,22 @@ public class GameManager : MonoBehaviour
 
     private Coroutine searchCoroutine = null;
 
-    private void Awake()
+    private async void Awake()
     {
+        PlayerPrefs.DeleteAll();
         uiManager.ShowMainMenuPanel();
 
-        if (!PlayerPrefs.HasKey("Name")) 
+        if (!PlayerPrefs.HasKey("Name"))
+        {
             uiManager.ActivateInsertNamePanel(true);
-        else 
-            Name = PlayerPrefs.GetString("Name");
+            return;
+        }
+
+        Name = PlayerPrefs.GetString("Name");
+        Task<PlayerAnalytics> analyticsTask = dataManager.GetPlayerAnalytics(Name);
+        await analyticsTask;
+
+        uiManager.UpdateStats(analyticsTask.Result);
 
     }
     public async void IsNameAlreadyUsed()
@@ -60,8 +68,11 @@ public class GameManager : MonoBehaviour
     private async void SavePlayerName(string name)
     {
         uiManager.ActivateNameAlreadyUsedWarning(false);
-        
-        Task playerTask = dataManager.AddPlayer(name);
+
+        Task playerTask = dataManager.SavePlayerAnalytics(new GameOverData { PlayerName = name,NumCorrect = 0,DurationSeconds = 0,Outcome = -1});
+        await playerTask;
+
+        playerTask = dataManager.AddPlayer(name);
         await playerTask;
 
         Name = name;
@@ -108,33 +119,46 @@ public class GameManager : MonoBehaviour
         NextQuestion();
     }
 
-    public void CompareGameResults(GameResult oppResult)
+    public async void CompareGameResults(GameResult oppResult)
     {
-        if(oppResult.score > _currentGameResult.score)
+        GameResultType resultType = GameResultType.Tie;
+
+        if (oppResult.score > _currentGameResult.score)
         {
+            resultType = GameResultType.Lose;
             uiManager.ShowResultPanel(GameResultType.Lose);
-            return;
         }
-
-        if (oppResult.score < _currentGameResult.score)
+        else if (oppResult.score < _currentGameResult.score)
         {
+            resultType = GameResultType.Win;
             uiManager.ShowResultPanel(GameResultType.Win);
-            return;
         }
-
-        if (oppResult.totalTime < _currentGameResult.totalTime)
+        else if (oppResult.totalTime < _currentGameResult.totalTime)
         {
+            resultType = GameResultType.Lose;
             uiManager.ShowResultPanel(GameResultType.Lose);
-            return;
         }
-
-        if (oppResult.totalTime > _currentGameResult.totalTime)
+        else if (oppResult.totalTime > _currentGameResult.totalTime)
         {
+            resultType = GameResultType.Win;
             uiManager.ShowResultPanel(GameResultType.Win);
-            return;
         }
 
-        uiManager.ShowResultPanel(GameResultType.Tie);
+        Task analyticsTask = dataManager.SavePlayerAnalytics(new GameOverData
+        {
+            PlayerName = Name,
+            Outcome = (int)resultType,
+            NumCorrect = _currentGameResult.score,
+            DurationSeconds = _currentGameResult.totalTime
+        });
+
+        await analyticsTask;
+
+        Task<PlayerAnalytics> statsTask = dataManager.GetPlayerAnalytics(Name);
+        await statsTask;
+
+        uiManager.UpdateStats(statsTask.Result);
+        uiManager.ShowResultPanel(resultType);
     }
 
     //Should be on a button for the results panel 

@@ -1,9 +1,28 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
+[System.Serializable]
+public class GameOverData
+{
+    public string PlayerName;
+    public int NumCorrect;
+    public float DurationSeconds;
+    public int Outcome;
+}
+
+[System.Serializable]
+public class PlayerAnalytics
+{
+    public long totalGamesPlayed;
+    public long totalWins;
+    public long totalLosses;
+    public long totalTies;
+    public double averageDurationSeconds;
+}
 [System.Serializable]
 public class GameResult
 {
@@ -54,6 +73,7 @@ public class DataManager : MonoBehaviour
             {
                 Task<GameResult> resultTask = GetPlayerResult(opponentName);
                 yield return new WaitUntil(() => resultTask.IsCompleted);
+
                 gameManager.CompareGameResults(resultTask.Result);
                 break;
             }
@@ -220,6 +240,8 @@ public class DataManager : MonoBehaviour
             return;
         }
     }
+
+    //DB Effect - Sets isPlaying = value
     public async Task SetPlayingStatus(bool value, string name)
     {
         UnityWebRequest www = UnityWebRequest.Put($"https://localhost:7170/api/Trivia/SetPlayingStatus_{name},{value}","");
@@ -277,5 +299,41 @@ public class DataManager : MonoBehaviour
             gameManager.Questions.Add(JsonUtility.FromJson<Question>(question));
         }   
     }
+
+    //Fire Base Methods:
+    public async Task<PlayerAnalytics> GetPlayerAnalytics(string playerName)
+    {
+        UnityWebRequest www = UnityWebRequest.Get($"http://localhost:5180/api/Analytics/GetPlayerAnalytics_{playerName}");
+        await www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            return null;
+        }
+
+        var json = www.downloadHandler.text;
+        Debug.Log(json);
+        PlayerAnalytics data = JsonUtility.FromJson<PlayerAnalytics>(json);
+        return data;
+    }
+
+    public async Task SavePlayerAnalytics(GameOverData data)
+    {
+        string json = JsonUtility.ToJson(data);
+        using var req = new UnityWebRequest($"http://localhost:5180/api/Analytics/GameOver", UnityWebRequest.kHttpVerbPOST);
+        req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+        req.downloadHandler = new DownloadHandlerBuffer();
+        req.SetRequestHeader("Content-Type", "application/json");
+
+        await req.SendWebRequest();
+
+        if (req.result == UnityWebRequest.Result.ConnectionError || req.result == UnityWebRequest.Result.ProtocolError)
+        {
+            Debug.Log(req.error);
+            return;
+        }
+    }
+    
 
 }

@@ -15,6 +15,11 @@ public class UIManager : MonoBehaviour
     [field:SerializeField] public TMP_InputField nameInputField { get; private set; }
     [SerializeField] private GameObject nameAlreadyUsedMessege;
 
+    [SerializeField] private TMP_Text winCounter;
+    [SerializeField] private TMP_Text loseCounter;
+    [SerializeField] private TMP_Text tieCounter;
+    [SerializeField] private TMP_Text matchCounter;
+
     [Header("Trivia Panel")]
     [SerializeField] private GameObject triviaPanel;
     [SerializeField] private TMP_Text questionTextTitle;
@@ -127,6 +132,15 @@ public class UIManager : MonoBehaviour
     {
         nameAlreadyUsedMessege.SetActive(value);
     }
+
+    public void UpdateStats(PlayerAnalytics analytics)
+    {
+        winCounter.text =$"Wins: {analytics.totalWins.ToString()}";
+        loseCounter.text = $"Losses: {analytics.totalLosses.ToString()}";
+        tieCounter.text = $"Ties: {analytics.totalTies.ToString()}" ;
+        matchCounter.text = $"Matches: {analytics.totalGamesPlayed.ToString()}";
+    }
+
     private void HideAllPanles()
     {
         resultPanel.SetActive(false);
