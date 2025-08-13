@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using UnityEngine;
 
 public enum GameResultType
@@ -34,7 +33,6 @@ public class GameManager : MonoBehaviour
 
     private async void Awake()
     {
-        PlayerPrefs.DeleteAll();
         uiManager.ShowMainMenuPanel();
 
         if (!PlayerPrefs.HasKey("Name"))

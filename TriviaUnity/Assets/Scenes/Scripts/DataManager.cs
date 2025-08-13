@@ -313,7 +313,6 @@ public class DataManager : MonoBehaviour
         }
 
         var json = www.downloadHandler.text;
-        Debug.Log(json);
         PlayerAnalytics data = JsonUtility.FromJson<PlayerAnalytics>(json);
         return data;
     }
